@@ -1,0 +1,45 @@
+export type ChainAddresses = {
+  vault: `0x${string}`
+  mandates: `0x${string}`
+  opportunities: `0x${string}`
+  router: `0x${string}`
+  confluence: `0x${string}`
+  notes: `0x${string}`
+  adapterRegistry: `0x${string}`
+  usdc: `0x${string}`
+  weth: `0x${string}`
+  priceFeed: `0x${string}`
+}
+
+// Paste addresses from scripts/deploy.js output.
+export const ADDRESSES: Record<number, ChainAddresses> = {
+  421614: { // Arbitrum Sepolia
+    vault: '0x0000000000000000000000000000000000000000',
+    mandates: '0x0000000000000000000000000000000000000000',
+    opportunities: '0x0000000000000000000000000000000000000000',
+    router: '0x0000000000000000000000000000000000000000',
+    confluence: '0x0000000000000000000000000000000000000000',
+    notes: '0x0000000000000000000000000000000000000000',
+    adapterRegistry: '0x0000000000000000000000000000000000000000',
+    usdc: '0x0000000000000000000000000000000000000000',
+    weth: '0x0000000000000000000000000000000000000000',
+    priceFeed: '0x0000000000000000000000000000000000000000',
+  },
+  31337: { // Hardhat localhost
+    vault: '0x0000000000000000000000000000000000000000',
+    mandates: '0x0000000000000000000000000000000000000000',
+    opportunities: '0x0000000000000000000000000000000000000000',
+    router: '0x0000000000000000000000000000000000000000',
+    confluence: '0x0000000000000000000000000000000000000000',
+    notes: '0x0000000000000000000000000000000000000000',
+    adapterRegistry: '0x0000000000000000000000000000000000000000',
+    usdc: '0x0000000000000000000000000000000000000000',
+    weth: '0x0000000000000000000000000000000000000000',
+    priceFeed: '0x0000000000000000000000000000000000000000',
+  },
+}
+
+export function addressesFor(chainId?: number | null): ChainAddresses | null {
+  if (!chainId) return null
+  return ADDRESSES[chainId] ?? null
+}

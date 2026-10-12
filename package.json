@@ -1,0 +1,58 @@
+{
+  "name": "confluence-protocol",
+  "version": "1.0.0",
+  "description": "Policy-bound aggregation primitive — Confluence Protocol",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:testnet": "tsx scripts/01-deploy-arbitrum-sepolia.ts",
+    "wire:testnet": "tsx scripts/wire-arbitrum-sepolia.ts",
+    "seed:usdg": "tsx scripts/02-mint-usdg-account-mandate.ts",
+    "e2e:usdg": "tsx scripts/03-usdg-depeg-e2e.ts",
+    "e2e:notes": "tsx scripts/04-notes-loan-e2e.ts",
+    "notes:continue": "tsx scripts/05-settle-notes-recovery.ts",
+    "e2e:all": "pnpm deploy:testnet && pnpm seed:usdg && pnpm e2e:usdg && pnpm e2e:notes",
+    "clean": "hardhat clean",
+    "size": "hardhat size-contracts"
+  },
+  "keywords": [
+    "solidity",
+    "defi",
+    "aggregation",
+    "confluence",
+    "policy",
+    "vault"
+  ],
+  "author": "RETECH ELECTRONICS",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
+    "@nomicfoundation/hardhat-toolbox": "^6.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.0.0",
+    "chai": "^4.4.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.15.0",
+    "hardhat": "^2.22.0",
+    "hardhat-contract-sizer": "^2.10.0",
+    "hardhat-gas-reporter": "^2.3.0",
+    "pino": "^9.7.0",
+    "solidity-coverage": "^0.8.12",
+    "ts-node": "^10.9.0",
+    "tsx": "^4.23.15",
+    "typechain": "^8.3.0",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^1.23.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "viem": "^2.57.4",
+    "zod": "^4.6.5"
+  }
+}

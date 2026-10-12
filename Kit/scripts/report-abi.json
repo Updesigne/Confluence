@@ -1,0 +1,17 @@
+{
+  "prefix": "0x00",
+  "types": [
+    "uint256 requestId",
+    "bytes32 invoiceHash",
+    "address borrower",
+    "bytes32 policyHash",
+    "bool approved",
+    "uint256 riskScore",
+    "uint256 advanceRateBps",
+    "uint256 invoiceAmount",
+    "address debtor",
+    "bytes32 evidenceHash",
+    "uint256 validUntil",
+    "uint256 reportNonce"
+  ]
+}
