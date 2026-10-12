@@ -1,21 +1,23 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowUpRight, Check, ChevronRight, Copy } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronRight, Coins, Copy, ExternalLink } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { useShell } from '@/components/ui/shell/shell-context'
 import { useWeb3 } from '@/providers/Web3Provider'
-import { useCreateNote, useEthPrice } from '@/hooks/useNotes'
+import { useCreateNote, useEthPrice, useMintWeth, useWethBalance } from '@/hooks/useNotes'
 import { parseUsdc, parseWeth } from '@/lib/web3/format'
 import { useTxTracker } from '@/hooks/useTxTracker'
 
 export default function CreateNotePage() {
   const router = useRouter()
   const { notify } = useShell()
-  const { contracts, address } = useWeb3()
+  const { contracts, address, chainId } = useWeb3()
   const createNote = useCreateNote()
+  const mintWeth = useMintWeth()
   const { track } = useTxTracker()
   const { data: ethPrice } = useEthPrice()
+  const { data: wethBalance, refetch: refetchWeth } = useWethBalance()
 
   const [collateral, setCollateral] = useState('20')
   const [ltv, setLtv] = useState('80')
@@ -28,6 +30,7 @@ export default function CreateNotePage() {
   const [txHash, setTxHash] = useState('')
   const [createdNoteId, setCreatedNoteId] = useState<bigint | null>(null)
   const [busy, setBusy] = useState(false)
+  const [mintingWeth, setMintingWeth] = useState(false)
 
   const eth = Number(ethPrice ?? 0n) / 1e8
   const c = Number(collateral) || 0
@@ -35,7 +38,8 @@ export default function CreateNotePage() {
   const durationValue = Number(duration) || 0
   const durationSeconds = rapidDemoTerm ? Math.trunc(durationValue) : Math.trunc(durationValue * 86400)
   const d = rapidDemoTerm ? durationValue / 86400 : durationValue
-  const loan = (c * eth * l) / 100
+  const rawLoan = (c * eth * l) / 100
+  const loan = Math.floor(rawLoan * 100) / 100
 
   const PURPOSE_PREMIUM: Record<string, number> = {
     Arbitrage: 0.5, Bridge: 1, Treasury: -0.25, Other: 1.5, 'Working capital': 0,
@@ -53,6 +57,8 @@ export default function CreateNotePage() {
     day: '2-digit', month: 'short', year: 'numeric',
   })
 
+  const explorer = chainId === 421614 ? 'https://sepolia.arbiscan.io' : 'https://arbiscan.io'
+
   useEffect(() => {
     localStorage.setItem(
       'confluence.notes.draft',
@@ -60,24 +66,58 @@ export default function CreateNotePage() {
     )
   }, [collateral, ltv, duration, purpose, category])
 
+  const handleMintWeth = async () => {
+    if (!address) return notify('Connect wallet first')
+    setMintingWeth(true)
+    notify('Minting 10 WETH demo collateral…')
+    try {
+      const receipt = await track('weth.mint', () => mintWeth(address, parseWeth('10')))
+      await refetchWeth()
+      notify('Minted 10 WETH successfully')
+    } catch (e: any) {
+      notify(e?.reason ?? e?.shortMessage ?? e?.message ?? 'Mint failed')
+    } finally {
+      setMintingWeth(false)
+    }
+  }
+
   const submit = async () => {
     if (!contracts) return notify('Connect your wallet first')
     setBusy(true)
-    notify('Confirm in wallet…')
+    notify('Confirm transaction in wallet…')
     try {
-      const noteId = await contracts?.notes.nextNoteId() as bigint | undefined
       const receipt = await createNote({
-          requested: parseUsdc(loan.toFixed(2)),
-          collateralAmount: parseWeth(collateral),
-          interest: parseUsdc(interest.toFixed(2)),
-          duration: BigInt(durationSeconds),
-        }, track)
+        requested: parseUsdc(loan.toFixed(2)),
+        collateralAmount: parseWeth(collateral),
+        interest: parseUsdc(interest.toFixed(2)),
+        duration: BigInt(durationSeconds),
+      }, track)
+
+      let resolvedNoteId: bigint | null = null
+      if (receipt && contracts) {
+        try {
+          for (const log of receipt.logs) {
+            const parsed = contracts.notes.interface.parseLog(log)
+            if (parsed && parsed.name === 'Created') {
+              resolvedNoteId = parsed.args[0] as bigint
+              break
+            }
+          }
+        } catch { }
+        if (resolvedNoteId === null) {
+          try {
+            const next = await contracts.notes.nextNoteId() as bigint
+            if (next > 1n) resolvedNoteId = next - 1n
+          } catch { }
+        }
+      }
       setTxHash(receipt?.hash ?? '')
-      setCreatedNoteId(noteId ?? null)
+      setCreatedNoteId(resolvedNoteId)
       setCreated(true)
-      notify('Note created')
+      await refetchWeth()
+      notify('Note created on-chain!')
     } catch (e: any) {
-      notify(e?.shortMessage ?? e?.message ?? 'Transaction failed')
+      notify(e?.reason ?? e?.shortMessage ?? e?.message ?? 'Transaction failed')
     } finally {
       setBusy(false)
     }
@@ -89,7 +129,7 @@ export default function CreateNotePage() {
         <PageHeader title="Note created" subtitle="Your policy-bound loan is ready for vault mandates to fund." />
         <section className="form-card note-success">
           <div className="success-mark"><Check size={25} /></div>
-          <div className="eyebrow">Transaction confirmed</div>
+          <div className="eyebrow">Transaction confirmed on-chain</div>
           <h2>Note created.</h2>
           <div className="success-table">
             {createdNoteId !== null && <span>Note ID <b>#{createdNoteId.toString()}</b></span>}
@@ -98,7 +138,7 @@ export default function CreateNotePage() {
             <span>APR <b>{apr.toFixed(2)}%</b></span>
             <span>Total due <b>{money(total)}</b></span>
             <span>Duration <b>{rapidDemoTerm ? `${durationSeconds} seconds` : `${durationValue} days`}</b></span>
-            <span>Transaction <b>{txHash ? `${txHash.slice(0, 10)}…` : '—'}</b></span>
+            <span>Transaction <b>{txHash ? <a href={`${explorer}/tx/${txHash}`} target="_blank" rel="noreferrer" className="hash">{txHash.slice(0, 10)}…{txHash.slice(-4)} <ExternalLink size={12} style={{ display: 'inline', verticalAlign: 'middle' }} /></a> : '—'}</b></span>
           </div>
           <button className="primary-button full" onClick={() => router.push('/notes')}>
             Back to notes <ArrowUpRight size={14} />
@@ -126,7 +166,24 @@ export default function CreateNotePage() {
         <p className="muted">Your loan is priced from the live on-chain collateral feed. {eth > 0 ? 'Amounts update with the latest feed price.' : 'Waiting for a valid on-chain ETH/USD price.'}</p>
 
         <div className="note-field">
-          <label htmlFor="collateral">WETH collateral <span className="field-sub">Collateral is held by the Notes contract until repayment or settlement.</span></label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+            <label htmlFor="collateral" style={{ margin: 0 }}>WETH collateral <span className="field-sub">Held by the Notes contract until repayment or settlement.</span></label>
+            {address && (
+              <span className="field-sub" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                Balance: <b>{wethBalance !== undefined ? (Number(wethBalance) / 1e18).toFixed(2) : '—'} WETH</b>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ padding: '2px 8px', fontSize: 11, height: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  disabled={mintingWeth}
+                  onClick={handleMintWeth}
+                  title="Mint 10 mock WETH for testing"
+                >
+                  <Coins size={11} /> {mintingWeth ? 'Minting…' : '+ Mint 10 WETH'}
+                </button>
+              </span>
+            )}
+          </div>
           <div className="input-field"><input id="collateral" type="number" min="0.01" step="0.01" value={collateral} onChange={(event) => setCollateral(event.target.value)} /><span>WETH</span></div>
           <div className="quick-chips">
             {[5, 10, 20, 50].map((amount) => (
@@ -189,7 +246,7 @@ export default function CreateNotePage() {
         {!address && <p className="error-text">Connect a wallet before submitting a note.</p>}
         {address && !contracts && <p className="error-text">No deployment is configured for this network.</p>}
         <button className="primary-button full" disabled={!valid || busy || !contracts} onClick={submit}>
-          {busy ? 'Confirming…' : 'Create note'} <ArrowUpRight size={14} />
+          {busy ? 'Broadcasting to smart contract…' : 'Create note'} <ArrowUpRight size={14} />
         </button>
         <small className="field-sub">By creating this note, you authorize the contract to hold the specified WETH collateral.</small>
       </section>

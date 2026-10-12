@@ -1,6 +1,6 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
-import { Contract } from 'ethers'
+import { Contract, formatUnits } from 'ethers'
 import type { TransactionReceipt } from 'ethers'
 import { useWeb3 } from '@/providers/Web3Provider'
 import { ERC20_ABI } from '@/lib/web3/abis'
@@ -64,6 +64,30 @@ export function useEthPrice() {
   })
 }
 
+export function useWethBalance() {
+  const { address, contracts } = useWeb3()
+  return useQuery({
+    queryKey: ['weth', 'balance', address],
+    enabled: !!contracts && !!address,
+    queryFn: async () => (await contracts!.weth.balanceOf(address!)) as bigint,
+    refetchInterval: 15_000,
+  })
+}
+
+export function useMintWeth() {
+  const { signer, contracts } = useWeb3()
+  return async (to: string, amount: bigint) => {
+    if (!contracts || !signer) throw new Error('Not connected')
+    const weth = new Contract(
+      contracts.addresses.weth,
+      ['function mint(address,uint256)'],
+      signer
+    )
+    const tx = await weth.mint(to, amount)
+    return tx.wait()
+  }
+}
+
 export type CreateNoteInput = {
   requested: bigint
   collateralAmount: bigint
@@ -83,9 +107,33 @@ export function useCreateNote() {
   const { contracts, signer } = useWeb3()
   return async (input: CreateNoteInput, track?: TrackTransaction) => {
     if (!contracts || !signer) throw new Error('Not connected')
+    const userAddr = await signer.getAddress()
     const notesAddr = await contracts.notes.getAddress()
+
+    // 1. Ensure user has enough WETH collateral (auto-mint on testnet if needed)
+    try {
+      const balance = (await contracts.weth.balanceOf(userAddr)) as bigint
+      if (balance < input.collateralAmount) {
+        const missing = input.collateralAmount - balance
+        const wethToken = new Contract(
+          contracts.addresses.weth,
+          ['function mint(address,uint256)'],
+          signer
+        )
+        const mintTx = async () => {
+          const tx = await wethToken.mint(userAddr, missing)
+          return tx.wait()
+        }
+        if (track) await track('weth.mintCollateral', mintTx)
+        else await mintTx()
+      }
+    } catch (mintErr) {
+      console.warn('WETH mint skipped or not permitted:', mintErr)
+    }
+
+    // 2. Approve WETH collateral to Notes contract if needed
     const allowance = (await contracts.weth.allowance(
-      await signer.getAddress(),
+      userAddr,
       notesAddr
     )) as bigint
     if (allowance < input.collateralAmount) {
@@ -96,6 +144,8 @@ export function useCreateNote() {
       if (track) await track('notes.approveCollateral', approve)
       else await approve()
     }
+
+    // 3. Call smart contract and broadcast createNote transaction
     const create = async () => {
       const tx = await contracts.notes.createNote(
         input.requested,
