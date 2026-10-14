@@ -27,24 +27,34 @@ const POSITION_STATUS = [
 
 const ZERO_HASH = "0x" + "00".repeat(32);
 
+/**
+ * Find the Confluence position bound to a given note.
+ *
+ * The OpportunityRegistry is shared across test runs and redeploys of
+ * Notes, so it may contain many opportunities with venueRefId == noteId.
+ * We therefore gather ALL candidates and rank by actionability:
+ *
+ *   1. EXPLICIT state arg (if it points at PLAN_LOCKED or EXECUTED)
+ *   2. Newest EXECUTED position (still holds repayment, needs settle)
+ *   3. Newest SETTLED / EMERGENCY_EXIT (nothing to do, informational)
+ */
 async function findPositionId(
   noteId: bigint,
   opp: Contract,
   conf: Contract,
   fromState: string | undefined
 ): Promise<bigint | undefined> {
-  // 1. Prefer saved state, but only if it points at a usable position
-  if (fromState) {
-    const posId = BigInt(fromState);
-    const p = await conf.positions(posId);
-    const s = Number(p.status);
-    if (s === 1 || s === 2 || s === 3 || s === 4) return posId;
-  }
+  type Candidate = {
+    opportunityId: bigint;
+    positionId: bigint;
+    status: number;
+  };
 
-  // 2. Walk opportunities newest-first and skip stale FORMING/CANCELLED
+  // 1. Gather every position bound to any opportunity with venueRefId = noteId
   const nextId = BigInt(await opp.nextOpportunityId());
+  const candidates: Candidate[] = [];
 
-  for (let i = nextId - 1n; i >= 1n; i--) {
+  for (let i = 1n; i < nextId; i++) {
     const o = await opp.opportunities(i);
     if (BigInt(o.venueRefId) !== noteId) continue;
 
@@ -54,10 +64,102 @@ async function findPositionId(
     const p = await conf.positions(posId);
     const s = Number(p.status);
 
-    // PLAN_LOCKED=1, EXECUTED=2, SETTLED=3, EMERGENCY_EXIT=4
-    if (s === 1 || s === 2 || s === 3 || s === 4) {
-      return posId;
+    // Skip orphans (FORMING) and CANCELLED
+    if (s === 0 || s === 5) continue;
+
+    candidates.push({ opportunityId: i, positionId: posId, status: s });
+  }
+
+  if (candidates.length === 0) return undefined;
+
+  // 2. Prefer explicit state arg if it points at an actionable position
+  if (fromState) {
+    const wanted = BigInt(fromState);
+    const hit = candidates.find((c) => c.positionId === wanted);
+    if (hit && (hit.status === 1 || hit.status === 2)) {
+      log.info(
+        {
+          chosen: hit.positionId.toString(),
+          status: POSITION_STATUS[hit.status],
+          source: "state",
+        },
+        "findPositionId: using explicit state position"
+      );
+      return hit.positionId;
     }
+    if (hit) {
+      log.warn(
+        {
+          wanted: wanted.toString(),
+          actualStatus: POSITION_STATUS[hit.status],
+        },
+        "findPositionId: state position is not actionable — scanning for a better one"
+      );
+    }
+  }
+
+  // 3. Prefer newest EXECUTED — the one that still needs settle()
+  const executed = candidates
+    .filter((c) => c.status === 2)
+    .sort((a, b) => Number(b.opportunityId - a.opportunityId));
+
+  if (executed.length > 0) {
+    log.info(
+      {
+        chosen: executed[0].positionId.toString(),
+        status: "EXECUTED",
+        allCandidates: candidates.map((c) => ({
+          opportunityId: c.opportunityId.toString(),
+          positionId: c.positionId.toString(),
+          status: POSITION_STATUS[c.status],
+        })),
+      },
+      "findPositionId: chose newest EXECUTED position"
+    );
+    return executed[0].positionId;
+  }
+
+  // 4. Fallback: newest PLAN_LOCKED (execution not yet run)
+  const planLocked = candidates
+    .filter((c) => c.status === 1)
+    .sort((a, b) => Number(b.opportunityId - a.opportunityId));
+
+  if (planLocked.length > 0) {
+    log.info(
+      {
+        chosen: planLocked[0].positionId.toString(),
+        status: "PLAN_LOCKED",
+        allCandidates: candidates.map((c) => ({
+          opportunityId: c.opportunityId.toString(),
+          positionId: c.positionId.toString(),
+          status: POSITION_STATUS[c.status],
+        })),
+      },
+      "findPositionId: chose newest PLAN_LOCKED position"
+    );
+    return planLocked[0].positionId;
+  }
+
+  // 5. Last resort: newest settled — allows caller to print
+  //    an informative "already settled" message
+  const settled = candidates
+    .filter((c) => c.status === 3 || c.status === 4)
+    .sort((a, b) => Number(b.opportunityId - a.opportunityId));
+
+  if (settled.length > 0) {
+    log.info(
+      {
+        chosen: settled[0].positionId.toString(),
+        status: POSITION_STATUS[settled[0].status],
+        allCandidates: candidates.map((c) => ({
+          opportunityId: c.opportunityId.toString(),
+          positionId: c.positionId.toString(),
+          status: POSITION_STATUS[c.status],
+        })),
+      },
+      "findPositionId: no EXECUTED position — returning already-settled one"
+    );
+    return settled[0].positionId;
   }
 
   return undefined;
@@ -88,7 +190,9 @@ async function main() {
   // Args: <noteId> [positionId] [--emergency]
   // ------------------------------------------------------------------
   const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-  const flags = new Set(process.argv.slice(2).filter((a) => a.startsWith("--")));
+  const flags = new Set(
+    process.argv.slice(2).filter((a) => a.startsWith("--"))
+  );
 
   let noteId: bigint;
   if (positional[0]) noteId = BigInt(positional[0]);
@@ -143,7 +247,7 @@ async function main() {
   if (repaidAmount < owed) {
     throw new Error(
       `Note not fully repaid (repaid=${repaidAmount}, owed=${owed}). ` +
-        `Run the frontend repay first.`
+      `Run the frontend repay first.`
     );
   }
 
@@ -159,7 +263,7 @@ async function main() {
   if (positionId === undefined) {
     throw new Error(
       "No usable Confluence position found for this note. " +
-        "Run scripts/list-positions-for-note.ts to inspect."
+      "Run scripts/list-positions-for-note.ts to inspect."
     );
   }
 
@@ -183,7 +287,11 @@ async function main() {
   );
 
   if (posStatus === 3 || posStatus === 4) {
-    log.info(`Position already ${POSITION_STATUS[posStatus]} — nothing to do`);
+    log.info(
+      `Position already ${POSITION_STATUS[posStatus]} — nothing to do. ` +
+      `If the note is still FUNDED, another position likely holds the repayment; ` +
+      `run scripts/list-positions-for-note.ts ${noteId} to find it.`
+    );
     return;
   }
   if (posStatus !== 2) {
@@ -226,19 +334,20 @@ async function main() {
   if (!matchesSettlement && !matchesEmergency) {
     throw new Error(
       `repayCall hash matches neither settlementHash nor emergencySettlementHash.\n` +
-        `  repayCall.data:            ${repayCall.data}\n` +
-        `  computed hash:             ${computedHash}\n` +
-        `  settlementHash:            ${pos.settlementHash}\n` +
-        `  emergencySettlementHash:   ${pos.emergencySettlementHash}\n` +
-        `The plan was locked with a different settlement call. ` +
-        `Check the exact arg list and target used at lockPlan time.`
+      `  repayCall.data:            ${repayCall.data}\n` +
+      `  computed hash:             ${computedHash}\n` +
+      `  settlementHash:            ${pos.settlementHash}\n` +
+      `  emergencySettlementHash:   ${pos.emergencySettlementHash}\n` +
+      `The plan was locked with a different settlement call. ` +
+      `Check the exact arg list and target used at lockPlan time.`
     );
   }
 
   // ------------------------------------------------------------------
   // Wait for BOTH maturities (note's and position's)
   // ------------------------------------------------------------------
-  const waitUntilTs = posMaturity > noteMaturity ? posMaturity : noteMaturity;
+  const waitUntilTs =
+    posMaturity > noteMaturity ? posMaturity : noteMaturity;
 
   log.info(
     {
@@ -249,7 +358,7 @@ async function main() {
     "Waiting for the later of the two maturities"
   );
 
-  // await waitUntil(waitUntilTs, "maturity");
+  await waitUntil(waitUntilTs, "maturity");
 
   // ------------------------------------------------------------------
   // Roles
@@ -314,19 +423,19 @@ async function main() {
     if (!canEmergency) {
       throw new Error(
         `Cannot use emergency path: wallet is neither protocolOwner nor emergencyOperator.\n` +
-          `  wallet:           ${address}\n` +
-          `  protocolOwner:    ${protocolOwner}\n` +
-          `  isProtocolOwner:  ${isProtocolOwner}\n` +
-          `  isEmergencyOp:    ${isEmergencyOp}\n` +
-          `Ask the deployer to grant you emergencyOperator rights, or have them run this script.`
+        `  wallet:           ${address}\n` +
+        `  protocolOwner:    ${protocolOwner}\n` +
+        `  isProtocolOwner:  ${isProtocolOwner}\n` +
+        `  isEmergencyOp:    ${isEmergencyOp}\n` +
+        `Ask the deployer to grant you emergencyOperator rights, or have them run this script.`
       );
     }
     if (!matchesEmergency) {
       throw new Error(
         `Emergency path requires hash to match emergencySettlementHash.\n` +
-          `  computed:                 ${computedHash}\n` +
-          `  emergencySettlementHash:  ${pos.emergencySettlementHash}\n` +
-          `The emergency hash was set to a different call list. Reconstruct it.`
+        `  computed:                 ${computedHash}\n` +
+        `  emergencySettlementHash:  ${pos.emergencySettlementHash}\n` +
+        `The emergency hash was set to a different call list. Reconstruct it.`
       );
     }
     log.info(
@@ -335,10 +444,10 @@ async function main() {
         reason: forceEmergency
           ? "forced via --emergency"
           : !withinDeadline
-          ? "past settlementDeadline"
-          : !isAgg
-          ? "wallet is not an aggregator"
-          : "settlementHash mismatch",
+            ? "past settlementDeadline"
+            : !isAgg
+              ? "wallet is not an aggregator"
+              : "settlementHash mismatch",
       },
       "Selected emergency path"
     );
@@ -360,8 +469,10 @@ async function main() {
   log.info(
     {
       noteId: noteId.toString(),
-      noteStatus: `${afterNote.status} (${NOTE_STATUS[Number(afterNote.status)]})`,
-      positionStatus: `${afterPos.status} (${POSITION_STATUS[Number(afterPos.status)]})`,
+      noteStatus: `${afterNote.status} (${NOTE_STATUS[Number(afterNote.status)]
+        })`,
+      positionStatus: `${afterPos.status} (${POSITION_STATUS[Number(afterPos.status)]
+        })`,
       returnedTotal: afterPos.returnedTotal.toString(),
     },
     "Settlement result"
