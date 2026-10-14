@@ -1,12 +1,12 @@
-
 {
   "name": "notes-kit",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "invoice:veri": "tsx 05-request-invoice-verification.ts",
-    "invoice:approve":"tsx 06-create-approved-invoice-note",
-    "invoice:config-forwarder": "tsx 07-configure-cre-forwarder"
+    "invoice:approve": "tsx 06-create-approved-invoice-note.ts",
+    "invoice:config-forwarder": "tsx 07-configure-cre-forwarder.ts",
+    "invoice:mock-cre": "tsx 08-mock-cre-report.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

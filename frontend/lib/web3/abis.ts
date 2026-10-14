@@ -73,8 +73,8 @@ export const CONFLUENCE_ABI = [
 
 export const NOTES_ABI = [
   'function nextNoteId() view returns (uint256)',
-  'function notes(uint256) view returns (uint256 id, address borrower, uint256 requested, uint256 funded, uint256 collateralAmount, uint256 interest, uint256 duration, uint256 maturity, uint256 settlementCutoff, uint256 repaidAmount, bytes32 purposeHash, bytes32 policyHash, uint8 status)',
-  'function getNote(uint256) view returns (tuple(uint256 id, address borrower, uint256 requested, uint256 funded, uint256 collateralAmount, uint256 interest, uint256 duration, uint256 maturity, uint256 settlementCutoff, uint256 repaidAmount, bytes32 purposeHash, bytes32 policyHash, uint8 status))',
+  'function notes(uint256) view returns (uint256 id, address borrower, uint256 requested, uint256 funded, uint256 collateralAmount, uint256 interest, uint256 duration, uint256 maturity, uint256 settlementCutoff, uint256 repaidAmount, bytes32 purposeHash, bytes32 policyHash, uint8 status, uint8 collateralKind, uint256 invoiceTokenId, bytes32 invoiceHash)',
+  'function getNote(uint256) view returns (tuple(uint256 id, address borrower, uint256 requested, uint256 funded, uint256 collateralAmount, uint256 interest, uint256 duration, uint256 maturity, uint256 settlementCutoff, uint256 repaidAmount, bytes32 purposeHash, bytes32 policyHash, uint8 status, uint8 collateralKind, uint256 invoiceTokenId, bytes32 invoiceHash))',
   'function currentEthPriceUsd() view returns (uint256)',
   'function asset() view returns (address)',
   'function draw(uint256,uint256)',
@@ -87,11 +87,38 @@ export const NOTES_ABI = [
   'function liquidateUnderwater(uint256)',
   'function withdrawCollateral(uint256)',
   'function cancel(uint256)',
+  'function invoiceNFT() view returns (address)',
+  'function creForwarder() view returns (address)',
+  'function protocolOwner() view returns (address)',
+  'function nextInvoiceRequestId() view returns (uint256)',
+  'function requestIdByInvoice(bytes32) view returns (uint256)',
+  'function invoiceRequests(uint256) view returns (uint256 id, address borrower, bytes32 invoiceHash, bytes32 evidenceHash, bytes32 policyHash, bytes32 purposeHash, uint256 requested, uint256 interest, uint256 duration, uint256 createdAt, bool processed, bool approved)',
+  'function offChainCollaterals(bytes32) view returns (bytes32 invoiceHash, uint256 invoiceAmount, uint256 riskScore, uint256 advanceRateBps, address debtor, bool verified, uint256 verifiedAt, bool financed)',
+  'function financedInvoices(bytes32) view returns (bool)',
+  'function requestInvoiceVerification(bytes32 invoiceHash, bytes32 evidenceHash, bytes32 policyHash, bytes32 purposeHash, uint256 requested, uint256 interest, uint256 duration) returns (uint256)',
+  'function createNoteWithInvoice(bytes32 invoiceHash, uint256 requested, uint256 interest, uint256 duration, bytes32 purposeHash, bytes32 policyHash, string pdfUri) returns (uint256)',
+  'function onReport(bytes metadata, bytes report)',
+  'function setCreForwarder(address forwarder)',
   'event Created(uint256 indexed id, address indexed borrower, uint256 requested, uint256 collateralAmount, uint256 collateralPriceUsd, uint256 collateralValueUsd, uint256 duration)',
   'event Drawn(uint256 indexed id, uint256 amount)',
   'event Repaid(uint256 indexed id, uint256 amount)',
   'event CollateralAdded(uint256 indexed id, uint256 amount)',
   'event UnderwaterLiquidated(uint256 indexed id, address indexed liquidator, uint256 collateralToLiquidator)',
+  'event InvoiceVerificationRequested(uint256 indexed requestId, bytes32 indexed invoiceHash, address indexed borrower, bytes32 evidenceHash, bytes32 policyHash, bytes32 purposeHash, uint256 requested, uint256 interest, uint256 duration, uint256 createdAt)',
+  'event InvoiceVerified(bytes32 indexed invoiceHash, uint256 riskScore, uint256 advanceRateBps, uint256 invoiceAmount, address debtor)',
+  'event InvoiceVerificationRejected(uint256 indexed requestId, bytes32 indexed invoiceHash, uint256 riskScore)',
+  'event InvoiceNoteCreated(uint256 indexed noteId, bytes32 indexed invoiceHash, uint256 invoiceTokenId, uint256 requested)',
+] as const
+
+export const INVOICE_NFT_ABI = [
+  'function nextTokenId() view returns (uint256)',
+  'function tokenByHash(bytes32) view returns (uint256)',
+  'function metadata(uint256) view returns (tuple(bytes32 invoiceHash, uint256 invoiceAmount, uint256 advanceRateBps, uint256 riskScore, address debtor, uint256 dueDate, uint256 verifiedAt, string pdfUri))',
+  'function ownerOf(uint256) view returns (address)',
+  'function owner() view returns (address)',
+  'function name() view returns (string)',
+  'function symbol() view returns (string)',
+  'event InvoiceMinted(uint256 indexed tokenId, bytes32 indexed invoiceHash, address indexed borrower, uint256 invoiceAmount, uint256 advanceRateBps)',
 ] as const
 
 export const ROUTER_ABI = [

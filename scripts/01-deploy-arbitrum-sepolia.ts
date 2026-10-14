@@ -29,7 +29,7 @@ async function main() {
     await usdg.getAddress(), await usdc.getAddress(), await pool.getAddress()
   ]);
   const notes = await deploy("Notes","Notes",[
-    await usdc.getAddress(), await weth.getAddress(), PRICE_FEED, await invoiceNFT.getAddress(), 5n
+    await usdg.getAddress(), await weth.getAddress(), PRICE_FEED, await invoiceNFT.getAddress(), 5n
   ]);
   const confluenceUSDG = await deploy("ConfluenceUSDG","Confluence",[
     await vaultUSDG.getAddress(), await mandatesUSDG.getAddress(), await opportunities.getAddress(), await router.getAddress()

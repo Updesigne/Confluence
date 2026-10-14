@@ -13,25 +13,27 @@ export type ChainAddresses = {
   usdc: `0x${string}`
   weth: `0x${string}`
   priceFeed: `0x${string}`
+  invoiceNFT?: `0x${string}`
 }
 
 // Paste addresses from scripts/deploy.js output.
 export const ADDRESSES: Record<number, ChainAddresses> = {
-  421614: { // Arbitrum Sepolia
-    vault: '0x7E936f72a3F685F302F51c8b97d3Bb8F20Dede1A',
-    mandates: '0x9692734E45a573aAd37c89d593eA6e7F20832EE9',
-    opportunities: '0x53ba7c08F2518b14e5ed2E3073B63e70B635EaEC',
-    router: '0x3a0515dDFddc6838b55CE2bd8fe406E11431f58b',
-    confluence: '0x976DbF8840a67ea7b6c769Bc4702d93B2F5606E8',
-    notes: '0x8D723764b900A10407bE40168BA28D5C9Cfa3f04',
+  421614: { // Arbitrum Sepolia — USDG basis
+    vault: '0xd3fab5534b12606103eda07C91B13246E87CBa29',           // vaultUSDG
+    mandates: '0xa7589EBB6607fC01f3b38D2986A325586E81DB14',       // mandatesUSDG
+    opportunities: '0xf86C37C6212202806AA3eFAC1c249501Ac396597',
+    router: '0x5B524a9d0dA4fE08223980968015D4dFe380d0Ef',
+    confluence: '0x2F629F4161E29b175b4b089c1199F0c52dE86Cc6',     // confluenceUSDG
+    notes: '0x8745ceB860a7822a5d046B0D22b3A563a073C610',
     mockVenue: '0x0000000000000000000000000000000000000000',
-    depegAdapter: '0xB0D31fa9b32F47373014Be2A5010c312460a47d1',
-    adapterRegistry: '0xc7e093e24A06135342D63D39382E0d5C55f000bF',
-    pool: '0xEE6c83130fbBB88575FcF81B9b50465fdaf0b890',
-    usdg: '0x915919c69634ae0A0e26c480350101b91006A77c',
-    usdc: '0xF11171b3F12023e0Cbf75e18885bDeF251E87B13',
-    weth: '0x6967B374D28a9225E53b074DfeDAdD32e1c5B9b8',
+    depegAdapter: '0x9927b8C276db3c78fe575c2E2DfF6FAbe9D3AaB8',   // usdgAdapter
+    adapterRegistry: '0xeA6720aa48b2d061Dc6e7560bccFdEEBedcffBc5',
+    pool: '0x4BfE159f0E1ebC610A27Ec8E5b39c891676EcBff',
+    usdg: '0x3BfcBCE79FAb56B3400CB909C2B65CA00732a43B',
+    usdc: '0xa5c141820297846A96552471BF91eaDd40e3Ff3c',
+    weth: '0xBf18Be6e85fe617C58eFEed0f1DFb84aB999365A',
     priceFeed: '0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165',
+    invoiceNFT: '0xDBfa8A0f8785e77C7314B5De3E26cB888ebedE37',
   },
   31337: { // Hardhat localhost
     vault: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
@@ -48,6 +50,7 @@ export const ADDRESSES: Record<number, ChainAddresses> = {
     usdc: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
     weth: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
     priceFeed: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
+    invoiceNFT: '0x0000000000000000000000000000000000000000',
   },
 }
 

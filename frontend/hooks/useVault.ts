@@ -68,6 +68,8 @@ export function useUsdcBalance() {
   })
 }
 
+export const useUsdgBalance = useUsdcBalance
+
 export function useCreateVaultAccount() {
   const { contracts } = useWeb3()
   return async () => {
@@ -109,17 +111,49 @@ export function useWithdraw() {
   }
 }
 
-/** Mint mock USDC — testnet only. */
-export function useMintUsdc() {
-  const { signer, contracts } = useWeb3()
-  return async (to: string, amount: bigint) => {
-    if (!contracts || !signer) throw new Error('Not connected')
-    const usdc = new Contract(
-      contracts.addresses.usdg,
-      ['function mint(address,uint256)'],
-      signer
-    )
-    const tx = await usdc.mint(to, amount)
-    return tx.wait()
+/** Mint mock USDG to the caller — testnet faucet. */
+export function useMintUsdg() {
+  const { address, signer, contracts } = useWeb3()
+  const { refetch: refetchBalance } = useUsdgBalance()
+
+  return async (to?: string, amount?: number | string | bigint) => {
+    const targetAddress = to || address
+    if (!targetAddress) throw new Error('Connect wallet first')
+
+    // 1. Attempt via the reliable faucet API (owner-signed on Arbitrum Sepolia)
+    try {
+      const numAmt = typeof amount === 'bigint' ? Number(amount) / 1e6 : amount || 10000
+      const res = await fetch('/api/faucet/usdg', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ to: targetAddress, amount: numAmt }),
+      })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        await refetchBalance?.()
+        return data
+      }
+      throw new Error(data.error || 'Faucet request failed')
+    } catch (apiErr: any) {
+      // 2. Fallback to direct client-side signer call
+      if (contracts && signer) {
+        const usdg = new Contract(
+          contracts.addresses.usdg,
+          ['function mint(address,uint256)'],
+          signer
+        )
+        const amtUnits = typeof amount === 'bigint'
+          ? amount
+          : BigInt(Math.floor((Number(amount) || 10000) * 1_000_000))
+        const tx = await usdg.mint(targetAddress, amtUnits)
+        const receipt = await tx.wait()
+        await refetchBalance?.()
+        return { ok: true, txHash: tx.hash, blockNumber: receipt?.blockNumber }
+      }
+      throw apiErr
+    }
   }
 }
+
+/** Mint mock USDC / USDG — backwards-compatible alias */
+export const useMintUsdc = useMintUsdg

@@ -13,7 +13,10 @@
     "notes:continue": "tsx scripts/05-settle-notes-recovery.ts",
     "e2e:all": "pnpm deploy:testnet && pnpm seed:usdg && pnpm e2e:usdg && pnpm e2e:notes",
     "clean": "hardhat clean",
-    "size": "hardhat size-contracts"
+    "size": "hardhat size-contracts",
+    "note:execute": "tsx scripts/note-execute.ts",
+    "note:settle": "tsx scripts/note-settle.ts",
+    "modle":"tsx scripts/modle.ts"
   },
   "keywords": [
     "solidity",

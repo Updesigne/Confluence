@@ -1,5 +1,5 @@
 {
-  "apiUrl": "http://localhost:8787", 
+  "apiUrl": "http://localhost:8787",
   "expectedPolicyHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
   "evidenceSignerAddress": "0xCDeD107c076BE8b2F0B3F59793F539cE29A7B438",
   "gasLimit": "500000",
@@ -11,6 +11,6 @@
   ],
   "evm": {
     "chainSelectorName": "ethereum-testnet-sepolia-arbitrum-1",
-    "notesAddress": "0x8D723764b900A10407bE40168BA28D5C9Cfa3f04"
+    "notesAddress": "0x8745ceB860a7822a5d046B0D22b3A563a073C610"
   }
 }

@@ -1,12 +1,19 @@
 import dotenv from "dotenv";
 import * as fs from "node:fs";
 import path from "node:path";
-dotenv.config({ path: process.env.ENV_FILE ?? ".env.invoice" });
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = process.env.ENV_FILE ?? (fs.existsSync(".env.invoice") ? ".env.invoice" : path.join(__dirname, ".env.invoice"));
+dotenv.config({ path: envPath });
+
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
 const env = process.env as Record<string, string | undefined>;
 for (const k of ["RPC_URL", "PRIVATE_KEY", "NOTES_ADDRESS", "INVOICE_PDF_URI"])
   if (!env[k]) throw new Error(`Missing env ${k}`);
-const req = JSON.parse(fs.readFileSync("invoice-request.json", "utf8")) as {
+
+const reqPath = process.env.INVOICE_REQUEST_FILE ?? (fs.existsSync("invoice-request.json") ? "invoice-request.json" : path.join(__dirname, "invoice-request.json"));
+const req = JSON.parse(fs.readFileSync(reqPath, "utf8")) as {
   requestId: string;
   invoiceHash: string;
   policyHash: string;

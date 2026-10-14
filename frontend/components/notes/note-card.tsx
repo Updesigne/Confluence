@@ -19,8 +19,9 @@ export function NoteCard({ note, ethPrice }: { note: Note; ethPrice: bigint }) {
   const depositRepayment = useDepositRepayment()
   const withdrawCollateral = useWithdrawNoteCollateral()
   const [busy, setBusy] = useState(false)
-  const collateralUsd = (note.collateralAmount * ethPrice) / 10n ** 20n
-  const ltv = collateralUsd > 0n ? Number((note.requested * 100n) / collateralUsd) : 0
+  const isInvoice = note.collateralKind === 2
+  const collateralUsd = !isInvoice ? (note.collateralAmount * ethPrice) / 10n ** 20n : 0n
+  const ltv = !isInvoice ? (collateralUsd > 0n ? Number((note.requested * 100n) / collateralUsd) : 0) : 50
   const repaid = note.status === 2
   const label = STATUS_LABEL[note.status]
   const isBorrower = address?.toLowerCase() === note.borrower.toLowerCase()
@@ -35,7 +36,14 @@ export function NoteCard({ note, ethPrice }: { note: Note; ethPrice: bigint }) {
             <small>{shortAddr(note.borrower)}</small>
           </span>
         </div>
-        <span className={`note-status ${repaid ? 'repaid' : ''}`}>{label}</span>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {isInvoice && (
+            <span className="note-status" style={{ background: 'rgba(73, 216, 139, 0.12)', color: 'var(--green)', borderColor: 'rgba(73, 216, 139, 0.3)' }}>
+              cINV #{note.invoiceTokenId.toString()}
+            </span>
+          )}
+          <span className={`note-status ${repaid ? 'repaid' : ''}`}>{label}</span>
+        </div>
       </div>
 
       <div className="note-headline">
@@ -43,13 +51,21 @@ export function NoteCard({ note, ethPrice }: { note: Note; ethPrice: bigint }) {
         <div><span>INTEREST</span><b>{fmtUsdc(note.interest)}</b></div>
       </div>
 
-      <div className="collateral-line">
-        <span>◈ {fmtWeth(note.collateralAmount)}</span>
-        <b>{fmtUsdc(collateralUsd)}</b>
-      </div>
-      <div className="ltv-label"><span>LTV <b>{ltv}%</b></span><span>Cap 80%</span></div>
+      {isInvoice ? (
+        <div className="collateral-line">
+          <span>📄 Invoice NFT #{note.invoiceTokenId.toString()}</span>
+          <b style={{ color: 'var(--green)' }}>Verified Receivable</b>
+        </div>
+      ) : (
+        <div className="collateral-line">
+          <span>◈ {fmtWeth(note.collateralAmount)}</span>
+          <b>{fmtUsdc(collateralUsd)}</b>
+        </div>
+      )}
+
+      <div className="ltv-label"><span>{isInvoice ? 'Advance Rate' : 'LTV'} <b>{ltv}%</b></span><span>Cap {isInvoice ? '70%' : '80%'}</span></div>
       <div className="ltv-bar">
-        <i style={{ width: `${ltv}%`, background: ltv > 65 ? 'var(--amber)' : 'var(--violet)' }} />
+        <i style={{ width: `${ltv}%`, background: ltv > 65 ? 'var(--amber)' : isInvoice ? 'var(--green)' : 'var(--violet)' }} />
       </div>
       <div className="note-duration">
         <span>{secondsToDays(note.duration)}d</span>

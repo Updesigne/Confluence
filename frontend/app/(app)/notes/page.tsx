@@ -19,6 +19,7 @@ export default function NotesPage() {
   const [mine, setMine] = useState(false)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'All' | 'Open' | 'Repaid'>('All')
+  const [kind, setKind] = useState<'All' | 'WETH' | 'Invoice'>('All')
 
   const filtered = useMemo(
     () =>
@@ -28,9 +29,11 @@ export default function NotesPage() {
         const label = STATUS_LABEL[n.status]
         if (status === 'Open' && label !== 'Open' && label !== 'Funded') return false
         if (status === 'Repaid' && label !== 'Repaid') return false
+        if (kind === 'WETH' && n.collateralKind === 2) return false
+        if (kind === 'Invoice' && n.collateralKind !== 2) return false
         return true
       }),
-    [notes, mine, query, status, address]
+    [notes, mine, query, status, kind, address]
   )
 
   const openCount = notes.filter((n) => n.status === 0 || n.status === 1).length
@@ -42,9 +45,14 @@ export default function NotesPage() {
         title="Notes"
         subtitle="Policy-bound borrowing, collateralized on-chain."
         actions={
-          <button className="primary-button" onClick={() => router.push('/notes/create')}>
-            <Plus size={15} /> Create note
-          </button>
+          <div className="header-actions">
+            <button className="secondary-button" onClick={() => router.push('/notes/invoice')}>
+              📄 Invoice Loan (CRE)
+            </button>
+            <button className="primary-button" onClick={() => router.push('/notes/create')}>
+              <Plus size={15} /> Create note
+            </button>
+          </div>
         }
       />
 
@@ -77,6 +85,13 @@ export default function NotesPage() {
         <div className="status-filters">
           {(['All', 'Open', 'Repaid'] as const).map((s) => (
             <button key={s} className={status === s ? 'active-filter' : ''} onClick={() => setStatus(s)}>{s}</button>
+          ))}
+        </div>
+        <div className="status-filters" style={{ marginLeft: 6 }}>
+          {(['All', 'WETH', 'Invoice'] as const).map((k) => (
+            <button key={k} className={kind === k ? 'active-filter' : ''} onClick={() => setKind(k)}>
+              {k === 'All' ? 'All Collateral' : k === 'WETH' ? '◈ WETH' : '📄 Invoice'}
+            </button>
           ))}
         </div>
         <button className="filter-button sort-button">Newest <ChevronRight size={13} /></button>

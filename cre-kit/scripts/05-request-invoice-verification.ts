@@ -1,7 +1,11 @@
 import dotenv from "dotenv";
 import * as fs from "node:fs";
 import path from "node:path";
-dotenv.config({ path:".env.invoice" });
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = process.env.ENV_FILE ?? (fs.existsSync(".env.invoice") ? ".env.invoice" : path.join(__dirname, ".env.invoice"));
+dotenv.config({ path: envPath });
 
 import {
   AbiCoder,
@@ -138,6 +142,9 @@ const state = {
 };
 const out = path.resolve(process.cwd(), "invoice-request.json");
 fs.writeFileSync(out, JSON.stringify(state, null, 2));
+if (out !== path.join(__dirname, "invoice-request.json")) {
+  fs.writeFileSync(path.join(__dirname, "invoice-request.json"), JSON.stringify(state, null, 2));
+}
 console.log(JSON.stringify({ ok: true, ...state, stateFile: out }, null, 2));
 if (env.CRE_TRIGGER_PROXY_URL && env.CRE_WORKFLOW_ID) {
   const triggerUrl = new URL(env.CRE_TRIGGER_PROXY_URL);

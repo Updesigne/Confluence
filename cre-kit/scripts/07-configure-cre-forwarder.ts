@@ -1,5 +1,11 @@
 import dotenv from "dotenv";
-dotenv.config({ path: process.env.ENV_FILE ?? ".env.invoice" });
+import * as fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const envPath = process.env.ENV_FILE ?? (fs.existsSync(".env.invoice") ? ".env.invoice" : path.join(__dirname, ".env.invoice"));
+dotenv.config({ path: envPath });
 import { Contract, JsonRpcProvider, Wallet, getAddress } from "ethers";
 const env = process.env as Record<string, string | undefined>;
 for (const k of [

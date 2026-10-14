@@ -60,7 +60,7 @@ contract InvoiceNFT is ERC721, Ownable {
             pdfUri: pdfUri
         });
 
-        _safeMint(to, tokenId);
+        _mint(to, tokenId);
         emit InvoiceMinted(tokenId, invoiceHash, to, invoiceAmount, advanceRateBps);
     }
 }

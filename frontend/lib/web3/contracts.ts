@@ -3,6 +3,7 @@ import {
   VAULT_ABI, MANDATE_REGISTRY_ABI, OPPORTUNITY_REGISTRY_ABI,
   CONFLUENCE_ABI, NOTES_ABI, ROUTER_ABI, ERC20_ABI,
   ADAPTER_REGISTRY_ABI, MOCK_USDG_POOL_ABI, USDG_DEPEG_ADAPTER_ABI,
+  INVOICE_NFT_ABI,
 } from './abis'
 import { addressesFor, type ChainAddresses } from './addresses'
 
@@ -19,6 +20,7 @@ export type Contracts = {
   usdg: Contract
   usdc: Contract
   weth: Contract
+  invoiceNFT: Contract
   addresses: ChainAddresses
 }
 
@@ -42,6 +44,7 @@ export function getContracts(
     usdg: new Contract(addr.usdg, ERC20_ABI, runner),
     usdc: new Contract(addr.usdc, ERC20_ABI, runner),
     weth: new Contract(addr.weth, ERC20_ABI, runner),
+    invoiceNFT: new Contract(addr.invoiceNFT ?? '0x0000000000000000000000000000000000000000', INVOICE_NFT_ABI, runner),
     addresses: addr,
   }
 }

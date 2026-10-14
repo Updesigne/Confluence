@@ -31,8 +31,8 @@ import { evaluate, type Evidence } from "./policy.js";
 
 const ConfigSchema = z.object({
   apiUrl: z
-  .string()
-  .regex(/^https?:\/\/\S+$/i, "apiUrl must be an HTTP(S) URL"),
+    .string()
+    .regex(/^https?:\/\/\S+$/i, "apiUrl must be an HTTP(S) URL"),
   expectedPolicyHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
   evidenceSignerAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   gasLimit: z.string().default("500000"),
@@ -194,9 +194,8 @@ async function onHttpTrigger(runtime: any, payload: HTTPPayload) {
       fetchEvidence,
       consensusIdenticalAggregation<Evidence>(),
     )({
-      url: `${config.apiUrl.replace(/\/$/, "")}/invoice/${
-        input.invoiceHash
-      }/evidence`,
+      url: `${config.apiUrl.replace(/\/$/, "")}/invoice/${input.invoiceHash
+        }/evidence`,
     })
     .result();
   if (
@@ -211,7 +210,7 @@ async function onHttpTrigger(runtime: any, payload: HTTPPayload) {
   });
   if (
     recoveredSigner.toLowerCase() !==
-      config.evidenceSignerAddress.toLowerCase() ||
+    config.evidenceSignerAddress.toLowerCase() ||
     evidence.signer.toLowerCase() !== config.evidenceSignerAddress.toLowerCase()
   )
     throw new Error("API evidence signer is not trusted");
@@ -246,8 +245,7 @@ async function onHttpTrigger(runtime: any, payload: HTTPPayload) {
     })
     .result();
   runtime.log(
-    `CRE invoice report txStatus=${write.txStatus}; receiverStatus=${
-      write.receiverContractExecutionStatus ?? "unknown"
+    `CRE invoice report txStatus=${write.txStatus}; receiverStatus=${write.receiverContractExecutionStatus ?? "unknown"
     }`,
   );
   if (write.txStatus !== TxStatus.SUCCESS)

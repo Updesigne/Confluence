@@ -11,6 +11,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {InvoiceNFT} from "../nft/InvoiceNFT.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 interface IERC20Metadata {
     function decimals() external view returns (uint8);
@@ -29,7 +30,7 @@ interface IReceiver {
     function onReport(bytes calldata metadata, bytes calldata report) external;
 }
 
-contract Notes is ReentrancyGuard, IReceiver {
+contract Notes is ReentrancyGuard, IReceiver, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     enum Status {
@@ -1061,5 +1062,14 @@ contract Notes is ReentrancyGuard, IReceiver {
         bytes32 invoiceHash
     ) external view returns (OffChainCollateral memory) {
         return offChainCollaterals[invoiceHash];
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 }

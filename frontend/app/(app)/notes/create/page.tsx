@@ -158,8 +158,44 @@ export default function CreateNotePage() {
       <PageHeader
         title="Create note"
         subtitle="Request a collateralized loan under transparent, on-chain terms."
-        actions={<button className="secondary-button" onClick={() => router.push('/notes')}>Back to notes</button>}
+        actions={
+          <div className="header-actions">
+            <button className="secondary-button" onClick={() => router.push('/notes/invoice')}>
+              📄 Invoice Loan (CRE)
+            </button>
+            <button className="secondary-button" onClick={() => router.push('/notes')}>
+              Back to notes
+            </button>
+          </div>
+        }
       />
+
+      <div style={{
+        maxWidth: 640,
+        marginBottom: 16,
+        padding: '12px 16px',
+        background: 'linear-gradient(90deg, rgba(133,108,255,0.12), rgba(73,216,139,0.08))',
+        border: '1px solid rgba(133,108,255,0.3)',
+        borderRadius: 12,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 12
+      }}>
+        <div>
+          <b style={{ color: 'var(--text)', fontSize: 12, display: 'block' }}>Looking to borrow against an Invoice?</b>
+          <span style={{ color: 'var(--muted)', fontSize: 11 }}>Tokenize enterprise receivables with Chainlink CRE verification and custodial NFT minting.</span>
+        </div>
+        <button
+          type="button"
+          className="primary-button"
+          style={{ whiteSpace: 'nowrap', padding: '6px 12px', fontSize: 11 }}
+          onClick={() => router.push('/notes/invoice')}
+        >
+          Invoice Financing <ArrowUpRight size={12} />
+        </button>
+      </div>
+
       <section className="create-note-form">
         <div className="eyebrow">Borrower request</div>
         <h2>Set your note terms.</h2>
